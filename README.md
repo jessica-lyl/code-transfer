@@ -1,247 +1,129 @@
-# Leak detection
-
-Create an API to train a model of classification and store training data as well as performances of the model.
-
-## 🔍️ Table of content
-
-- [Documentation](#📄-documentation)
-- [Requirements](#💻-requirements)
-- [Installation](#⚙️-installation)
-- [Usage](#📈-usage)
-- [MLFlow/Google Cloud](#🗃️-mlflowgoogle-cloud)
-- [CI/CD](#🧱-cicd)
-- [Deployment](#🚀-deployment)
-- [How to contribute ?](#🛠️-how-to-contribute)
-
-
-### FastAPI interface
-![GIF 1](gifs/tool-interface.png)
-
-
-## 📄 Documentation
-
-**Documentation**:
-<br> [https://ai.veolia.tech/guidelines/operationalization/streamlit/streamlit/](https://ai.veolia.tech/guidelines/operationalization/streamlit/streamlit/)
-<br> [https://ai.veolia.tech/guidelines/operationalization/lab-iris/intro/](https://ai.veolia.tech/guidelines/operationalization/lab-iris/intro/)
-<br> [API documentation](https://pudong-leak-detection-veolia-com-asia-special-pr-76e8b218fd571a.gitlab.io/)
-
-
-**Source code**: [https://gitlab.com/veolia.com/asia/special-projects-asia/sandbox-data/pudong-leak-detection](https://gitlab.com/veolia.com/asia/special-projects-asia/sandbox-data/pudong-leak-detection)
+# Pudong feature store
 
 
 
-## 💻 Requirements
+## Import raw data
 
-### Python version
-* Main supported version : <strong>3.11</strong> <br>
-
-Please make sure you have one of these versions installed to be able to run the app on your machine.
-
-
-## ⚙️ Installation
-
-
-### Create a virtual environment (optional)
-We strongly advise to create and activate a new virtual environment, to avoid any dependency issue.
-
-For example with conda:
-```bash
-pip install conda; conda create -n streamlit_leak_detection python=3.11; conda activate streamlit_leak_detection
-```
-
-Or with virtualenv:
-```bash
-pip install virtualenv; python3.11 -m virtualenv streamlit_leak_detection --python=python3.7; source streamlit_leak_detection/bin/activate
-```
-
-### Clone the repository
-Clone the repository locally:
-```bash
-git clone git@gitlab.com:veolia.com/asia/special-projects-asia/sandbox-data/pudong-leak-detection.git
-```
-
-### Install package
-Install the package from requirements.txt:
-```bash
-pip install -r app/requirements.txt
-```
-
-
-## 📈 Usage
-
-Before you can use your code, please check the following conditions:
-
-* <strong>Config</strong>:
-<br>[app\src\config.py](app\src\config.py) : indicate the different informations about your BigQuery table where is stored your input data.
-
-![Picture 1](gifs/config.png)
-<br>This dataset should contain **input columns**, **target column** with the name **'leaks'** and must be in the wide format like on the following example :
-
-<img src="gifs/BQ_table.png" width="600">
-
-* <strong>Inputs</strong>:
-<br>[app\src\config.py](app\src\config.py) : indicate the different features or inputs of your model in this file
-
-![Picture 2](gifs/features.png)
-
-<br>[app/src/datamodels.py](app/src/datamodels.py) : inthe class 'PipesFeatures', indicate all the features with their type that you want to use
-
-![Picture 3](gifs/datamodels.png)
-
-* <strong>Cloud Storage</strong>:
-<br>Create a bucket with the following name : GCP_PROJECT_ID-DEFAULT_ARTIFACTS_BUCKET_NAME_GENERIC, where DEFAULT_ARTIFACTS_BUCKET_NAME_GENERIC is defined in the file [app/src/artifacts_management.py](app/src/artifacts_management.py)
-
-<img src="gifs/artifacts.png" width="600">
-
-<br>The bucket must have this form, and the location is defined in the file [app/src/utils/data_io_services/cloud_storage.py](app/src/utils/data_io_services/cloud_storage.py) :
-
-<img src="gifs/bucket.png" width="600">
-
-* <strong>Firestore</strong>:
-<br>Create a database in Firestore with the name DEFAULT_METADATA_DATABASE_NAME_GENERIC defined in the file [app/src/artifacts_management.py](app/src/artifacts_management.py)
-
-<img src="gifs/firestore.png" width="600">
-
-For the last 3 elements, you must give the following access to the service account with which you deploy the application:
-- BigQuery : BigQuery Data Viewer on the table you are storing your data
-- Cloud Storage : Give access to write in the bucket
-- Firestore : Grant access for writing in the database : you can use the following command in Cloud Shell Terminal adapting the PROJECT_ID, DATABASE_ID and the EMAIL (TITLE and DESCRIPTION are facultative) :
+Use this following command in your terminal to import the raw data
 
 ```bash
-PROJECT_ID=cn-ops-asia-cloudscada
-EMAIL='bigquery@cn-ops-asia-cloudscada.iam.gserviceaccount.com'
-DATABASE_ID=plastic-experiment
-TITLE=plastic-experiment-metadata
-DESCRIPTION=database_for_metadata
-gcloud projects add-iam-policy-binding $PROJECT_ID \
---member="serviceAccount:$EMAIL" \
---role="roles/datastore.user" \
---condition='expression=resource.name=="projects/cn-ops-asia-cloudscada/databases/plastic-experiment",title=plastic-experiment-metadata,description=database_for_metadata'
+gcloud storage cp -r gs://cn-smart-leak/data/raw data/raw
 ```
 
-* <strong>MLFlow</strong>:
-<br>Change the parameters related to MLFlow (mlflow_tracking_uri and mlflow_tracking_token) in the file [app/src/config.py](app/src/config.py) :
-
-<img src="gifs/mlflow.png" width="600">
-
-mlflow_tracking_token must be created via GitLab in Settings --> Access Tokens and Add new token with Scopes "API"
-
-Once realized, run the following command to open the app in your default web browser:
-
-
-Now you can use the optimization tool.
-
-
-* <strong>Pytest</strong>:
-<br>Create the file [app/data/dataset_test.parquet](app/data/dataset_test.parquet) used for the tests
-
-```python
-from app.src.config import (DATASET_ID, PROJECT_ID, TABLE_ID, COLUMNS)
-sql = f"""
-    SELECT {', '.join(COLUMNS)}, `leaks`
-    FROM `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`
-    LIMIT 100000
-"""
-
-df = pd.read_gbq(sql, project_id=PROJECT_ID)
-
-df.to_parquet('../app/data/dataset_test.parquet')
-```
-
-<br>Adapt your examples in the file [app/tests/default_test_cases.py](app/tests/default_test_cases.py)
-
-<img src="gifs/defaults_cases.png" width="600">
-
-<br>Use the following command to trigger your tests
+Load the .inp file, waiting for the final code that takes the .net file
 ```bash
-python3 -m pytest app/
+gcloud storage cp -r gs://cn-smart-leak/data/tidy/network/230726-15min.inp data/tidy/network
 ```
 
-* <strong>Interactive docs</strong>:
-To visualize interactive openapi specification, launch locally your api server :
-```bash
-uvicorn app.main:app --reload
+## Codes explanation
+
+### 1. [app/src/epanet.py](app/src/epanet.py)
+
+This file allows to store a json file on cloud storage which indicates for each pipe of the network, all the pipes which are at a distance less than or equal to 1000 meters, as well as the relative distance between these two pipes. It is important to store this information because it is used in the API to calculate metrics.
+
+### 2. [app/src/pipes_coordinates.py](app/src/pipes_coordinates.py)
+
+This file stores in cloud storage a json file that indicates the coordinates of all the nodes of the network. This information is used for the front end, to display the map.
+
+### 3. [app/src/pipes_nodes.py](app/src/pipes_nodes.py)
+
+This file stores a json file that, for each pipe, refers to its two nodes. It is used to calculate metrics.
+
+### 4. [app/src/pressure.py](app/src/pressure.py)
+
+The important process of this function are the following ones :
+
+- Reads and cleans the data: The function reads the pressure data from a CSV file, converts the 'collect_time' column to datetime format, removes duplicates, and pivots the data to a wide format. The data is then resampled to a 10-minute frequency.
+
+- Selects the last 20 days of data: The function selects the last 20 days of data from the specified date and reshapes the data.
+
+- Fills missing values: The function fills missing values in the data with the median of the respective row.
+
+- Normalizes the data: The function normalizes the data by subtracting the mean and dividing by the standard deviation.
+
+- Prepares the data for tsfresh: The function prepares the data for tsfresh by creating an 'id' column and reshaping the data to a long format.
+
+- Extracts features with tsfresh: The function uses tsfresh to extract features from the time series data.
+
+- Cleans the features: The function cleans the extracted features by removing columns with missing values or only one unique value.
+
+- Renames the columns: The function renames the columns by replacing non-alphanumeric characters with underscores.
+
+- Returns the processed features: The function returns the processed features as a pandas DataFrame.
+
+This code returns a table for a specified date. The table uses the name of the measurement point as the key and a list of features extracted with tsfresh from the time series of the pressure measured in the 20 days preceding the date as the data. This data is then joined with the pipe information using the measurement point name.
+
+
+
+
+### 5. [app/src/pipes_infos.py](app/src/pipes_infos.py)
+
+We use the file [app/src/data/translation_pipes_infos.json](app/src/data/translation_pipes_infos.json) to translate materials names. It can be updated.
+
+
+### 6. [app/src/outlet_pressure_waterplant.py](app/src/outlet_pressure_waterplant.py)
+
+The first function 'transform_outlet_pressure_waterplant' returns the output pressure of the plants over time.
+The second function 'transform_outlet_pressure_waterplant' returns the output pressure of the plants over time.
+
+### 7. [app/src/pressure_difference.py](app/src/pressure_difference.py)
+
+For each date, for all combinations of two measurement points, the pressure difference over the last 20 days is calculated.
+
+### 8. [app/src/weather.py](app/src/weather.py)
+
+This script processes and cleans a set of weather data files. It reads CSV files from a specified directory, concatenates them into a single DataFrame, and performs various transformations including creating a unified date column, calculating a rolling 20-day mean for each column, and filtering rows based on specific criteria (keep the 15th and last day for each month). It also removes columns with high correlation, missing values, or single unique values. The column names are cleaned to replace non-alphanumeric characters with underscores. The final cleaned DataFrame is then returned.
+
+### 9. [app/src/pressure_2.py](app/src/pressure_2.py)
+
+The important process of this function are the following ones :
+
+Same as pressure.py with the last format of pressure given.
+
+- Selects the last 20 days of data: The function selects the last 20 days of data from the specified date and reshapes the data.
+
+- Fills missing values: The function fills missing values in the data with the median of the respective row.
+
+- Normalizes the data: The function normalizes the data by subtracting the mean and dividing by the standard deviation.
+
+- Prepares the data for tsfresh: The function prepares the data for tsfresh by creating an 'id' column and reshaping the data to a long format.
+
+- Extracts features with tsfresh: The function uses tsfresh to extract features from the time series data.
+
+- Cleans the features: The function cleans the extracted features by removing columns with missing values or only one unique value.
+
+- Renames the columns: The function renames the columns by replacing non-alphanumeric characters with underscores.
+
+- Returns the processed features: The function returns the processed features as a pandas DataFrame.
+
+This code returns a table for a specified date. The table uses the name of the measurement point as the key and a list of features extracted with tsfresh from the time series of the pressure measured in the 20 days preceding the date as the data. This data is then joined with the pipe information using the measurement point name.
+
+
+### 10. [app/create_original_dataset.ipynb](app/create_original_dataset.ipynb)
+
+This notebook was used to create the final dataset in BigQuery.
+It used the different elements of the other scripts. From now on, we will call extraction date the 15th day and the last day of each month, the dates when data is gathered.
+There are three tables related to this dataset:
+- `cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset_pipes_infos`: this table contains all the information related to each pipe (Length, diameter, ...), it also contains calculated characteristics like age, number of past leaks. Finally, the 'leaks' column is the y-label of the dataset. For each key (pipe, date), it contains the information if a leak has occurred.
+- `cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset_pressure_ts`: this table contains the features extracted from the pressure times series. For each extraction date, we extract the features over the 20 past days.
+- `cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset_weather`: this table contains different weather features. For each extraction date, we calculate the min/max/avg/sum of the feature over the last 20 days depending of the feature.
+
+Join :
+
+```SQL
+CREATE TABLE cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset AS
+SELECT *
+FROM `cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset_pipes_infos` AS table1
+LEFT JOIN `cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset_pressure_ts` AS table2
+ON table1.date = table2.datetime AND table1.nearest_tag = table2.tag
+LEFT JOIN `cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset_weather` AS table3
+ON table1.date = table3.collection_date;
 ```
 
-Then open your browser and go to
+Create table for the API (we reduce the size of the dataset to reduce the time of training, could be change later):
+
+```SQL
+CREATE TABLE cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset_API AS
+SELECT * FROM cn-ops-spdigital-datasci-dev.pudong_leak_detection.final_dataset
+WHERE date>='2020-01-01'
 ```
-http://127.0.0.1:8000/docs
-```
-
-
-## 🗃️ MLFlow/Google Cloud
-
-MLFlow on GitLab is a powerful tool designed to facilitate the management of machine learning projects and their associated models and metrics. By leveraging MLFlow, we can conveniently store all our models and their corresponding metrics, enabling we to effectively track the history and evolution of our models over time. This capability empowers us to compare different versions of our models, monitor performance improvements, and make well-informed decisions based on historical data. With MLFlow on GitLab, we can ensure reproducibility, foster collaboration among team members, and efficiently manage our machine learning projects. Additionally, MLFlow allows we to organize models based on the target selected by the user, providing a flexible and customizable approach to model storage and retrieval. By utilizing MLFlow on GitLab, we can streamline our machine learning workflow, enhance project transparency, and drive impactful results.
-
-On Google Cloud, we utilize a similar process to store the datasets used for training, as well as the history of the recommendations. By leveraging the capabilities of Google Cloud, we can efficiently manage and store the datasets, ensuring their availability and accessibility for training purposes. Additionally, by keeping a record of the recommendation history, we can track the performance and effectiveness of the recommendations over time. This allows for continuous improvement and optimization of the recommendation system. With Google Cloud, we can seamlessly integrate data storage and management into my machine learning workflow, enabling efficient collaboration and reproducibility of results.
-
-
-## 🧱 CI/CD
-
-CI/CD on GitLab refers to the continuous integration and continuous deployment process implemented on the GitLab platform. It involves automating the build, testing, and deployment of software applications. With GitLab CI/CD, developers can push their code changes to a Git repository, triggering a pipeline that automatically builds, tests, and deploys the application. This process ensures that code changes are thoroughly tested and deployed to production environments in a consistent and efficient manner. GitLab CI/CD also provides features like parallel testing, environment management, and integration with various tools and services, making it a comprehensive solution for implementing a robust CI/CD workflow.
-
-We also use the file .pre-commit-config.yml in order to impose rules on commits. This makes it possible to ensure that the CI/CD pipelines will go through well during the push. You can install the pre-commit by performing these two commands:
-```bash
-pip install pre-commit
-```
-```bash
-pre-commit install
-```
-
-## 🚀 Deployment
-
-To deploy on Cloud Run, you need to modify the information contained in the following file to adapt it to your project: `.gitlab-ci.yml`, especially the following fields:
-
-`GCP_PROJECT_NAME_GENERIC`
-
-`GCP_DEFAULT_LOCATION`
-
-`GCP_ARTIFACT_REGISTRY_REPOSITORY`
-
-`GCP_VPC_NETWORK_NAME`
-
-`GCP_CLOUD_RUN_SERVICE_NAME`
-
-`GCP_CLOUD_RUN_MEMORY`
-
-`GCP_CLOUD_RUN_MIN_INSTANCES`
-
-`GCP_CLOUD_RUN_TIMEOUT`
-
-
-## 🛠️ How to contribute ?
-
-Here is the important information about the repository:
-
--**app** :
-
-This folder contains all the code necessary for the web app to function on Streamlit, as well as the tests.
-
--**.gitlab-ci.yml** :
-
-The `.gitlab-ci.yml` file defines the structure and order of the pipelines and determines:
-
-- What to execute using [GitLab Runner](https://docs.gitlab.com/runner/).
-- What decisions to make when specific conditions are encountered. For example, when a process succeeds or fails.
-
-
--**.pre-commit-config.yaml** :
-
-The .pre-commit-config.yaml file is a configuration file used by the pre-commit tool to define pre-commit hooks to run before each commit in a project. It specifies the commands to run, the files to check, and the actions to take if any issues are found.
-
--**app.yaml** :
-
-You configure your App Engine app's settings in the `app.yaml` configuration file. Your config file must specify at least a runtime entry.
-
-Each service in your app has its own `app.yaml` file, which acts as a descriptor for its deployment.
-
--**cloudbuild.yaml** :
-
-Cloud Build is a service that executes your builds on Google Cloud.
-
-Cloud Build can import source code from a variety of repositories or cloud storage spaces, execute a build to your specifications, and produce artifacts such as Docker containers or Java archives.
-
--**Dockerfile** :
-
-Docker can build images automatically by reading the instructions from a Dockerfile. A Dockerfile is a text document that contains all the commands a user could call on the command line to assemble an image. This page describes the commands you can use in a Dockerfile.
-
